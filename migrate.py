@@ -5,9 +5,10 @@ import datetime
 
 from sqlalchemy import create_engine
 
-from migrations_config import DB_URI, SEPARATOR
+from migrations_config import DB_URI, SEPARATOR, VERSIONS_PATH
 
-CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+import sys
+sys.path.insert(0, VERSIONS_PATH)
 
 DEFAULT_MIGRATION_FILE = """
 
@@ -37,7 +38,7 @@ def create(schema, name):
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d%H%M%S')
     filename = f'{timestamp}{SEPARATOR}{schema}{SEPARATOR}{name}.py'
     click.echo(f'Creating new migration file {filename}')
-    os_path = os.path.join(CURRENT_DIRECTORY, 'versions', filename)
+    os_path = os.path.join(VERSIONS_PATH, filename)
     with open(os_path, 'w') as f:
         f.write(DEFAULT_MIGRATION_FILE)
 
@@ -151,18 +152,17 @@ def update_migrations_table(migration_filename, upgrade=True):
 def import_migration_from_filename(filename):
     if '.py' in filename:
         filename = filename[:-3]
-    migrations_module = __import__(f'versions.{filename}')
-    migration = getattr(migrations_module, filename)
-    return migration
+    migrations_module = __import__(filename)
+    return migrations_module
 
 
 def all_migration_files():
-    for _, _, files in os.walk(f'{CURRENT_DIRECTORY}/versions'):
+    for _, _, files in os.walk(VERSIONS_PATH):
         return sorted([file for file in files if file != '__init__.py'])
 
 
 def migration_files_for_schema(schema):
-    for _, _, files in os.walk(f'{CURRENT_DIRECTORY}/versions'):
+    for _, _, files in os.walk(VERSIONS_PATH):
         return sorted([
             filename
             for filename in files
